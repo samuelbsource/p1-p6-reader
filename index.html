@@ -17,6 +17,7 @@
   <span id="error-message" style="color: red;"></span><br>
   <canvas id="canvas" style="border:1px solid #000000;"></canvas>
   <script>
+    const textEncoder = new TextEncoder()
     document.getElementById('zoom').textContent = `${document.querySelector('input[name="zoom"]').value}x`;
     document.querySelector('input[name="zoom"]').addEventListener('input', function() {
       document.getElementById('zoom').textContent = `${this.value}x`;
@@ -260,13 +261,13 @@
       // image data only, without header, as a matrix
       // There are no more rows/columns, just a string of values, so we need to produce matrix based on the available size information
       // First, convert each value to a number, then split by columns
-      const data = dataAsRows.slice(2).join("\n");
+      const data = textEncoder.encode(dataAsRows.slice(2).join("\n"));
       const bitmap = [];
       for (let row = 0; row < size[1]; row++) {
         bitmap[row] = []; // To create matrix, 2d array, each row must be another array itself
         for (let column = 0; column < size[0]; column++) {
           const offset = (row * size[0]) + column; // calculate offset: (row * number of columns) + current column
-          bitmap[row][column] = data.charCodeAt(offset); // Convert binary value to integer
+          bitmap[row][column] = data[offset]; // Convert binary value to integer
         }
       }
 
@@ -328,13 +329,13 @@
       // image data only, without header, as a matrix
       // There are no more rows/columns, just a string of values, so we need to produce matrix based on the available size information
       // First, convert each value to a number, then split by columns
-      const data = dataAsRows.slice(3).join("\n");
+      const data = textEncoder.encode(dataAsRows.slice(3).join("\n"));
       const bitmap = [];
       for (let row = 0; row < size[1]; row++) {
         bitmap[row] = []; // To create matrix, 2d array, each row must be another array itself
         for (let column = 0; column < size[0]; column++) {
           const offset = (row * size[0]) + column; // calculate offset: (row * number of columns) + current column
-          bitmap[row][column] = data.charCodeAt(offset); // Convert binary value to integer
+          bitmap[row][column] = data[offset]; // Convert binary value to integer
         }
       }
 
@@ -397,7 +398,7 @@
       // image data only, without header, as a matrix
       // There are no more rows/columns, just a string of values, so we need to produce matrix based on the available size information
       // First, convert each value to a number, then split by columns
-      const data = dataAsRows.slice(3).join("\n");
+      const data = textEncoder.encode(dataAsRows.slice(3).join("\n"));
       const bitmap = [];
       const rows = size[1]
       const columns = size[0] * 3
@@ -405,7 +406,7 @@
         bitmap[row] = []; // To create matrix, 2d array, each row must be another array itself
         for (let column = 0; column < columns; column++) {
           const offset = (row * columns) + column; // calculate offset: (row * number of columns) + current column
-          bitmap[row][column] = data.charCodeAt(offset); // Convert binary value to integer
+          bitmap[row][column] = data[offset]; // Convert binary value to integer
         }
       }
 
