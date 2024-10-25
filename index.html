@@ -260,7 +260,7 @@
       // image data only, without header, as a matrix
       // There are no more rows/columns, just a string of values, so we need to produce matrix based on the available size information
       // First, convert each value to a number, then split by columns
-      const data = dataAsRows[2];
+      const data = dataAsRows.slice(2).join("\n");
       const bitmap = [];
       for (let row = 0; row < size[1]; row++) {
         bitmap[row] = []; // To create matrix, 2d array, each row must be another array itself
@@ -328,7 +328,7 @@
       // image data only, without header, as a matrix
       // There are no more rows/columns, just a string of values, so we need to produce matrix based on the available size information
       // First, convert each value to a number, then split by columns
-      const data = dataAsRows[3];
+      const data = dataAsRows.slice(3).join("\n");
       const bitmap = [];
       for (let row = 0; row < size[1]; row++) {
         bitmap[row] = []; // To create matrix, 2d array, each row must be another array itself
@@ -397,7 +397,7 @@
       // image data only, without header, as a matrix
       // There are no more rows/columns, just a string of values, so we need to produce matrix based on the available size information
       // First, convert each value to a number, then split by columns
-      const data = dataAsRows[3];
+      const data = dataAsRows.slice(3).join("\n");
       const bitmap = [];
       const rows = size[1]
       const columns = size[0] * 3
