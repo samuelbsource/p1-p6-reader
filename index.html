@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>P1-P6 file reader</title>
+</head>
+<body>
+  <form id="form" action="/" method="post" style="margin-bottom: 1em;">
+    <input type="file" name="file">
+    <label for="zoom">Zoom:</label>
+    <input type="range" name="zoom" min="1" max="100" value="1" style="width: 300px">
+    <span id="zoom" style="display: inline-block; width: 30px; text-align: center; margin-right: 5px;"></span>
+    <button type="submit">Draw</button>
+  </form>
+  Size: <span id="canvas-size"></span><br>
+  <span id="error-message" style="color: red;"></span><br>
+  <canvas id="canvas" style="border:1px solid #000000;"></canvas>
+  <script>
+    document.getElementById('zoom').textContent = `${document.querySelector('input[name="zoom"]').value}x`;
+    document.querySelector('input[name="zoom"]').addEventListener('input', function() {
+      document.getElementById('zoom').textContent = `${this.value}x`;
+    });
+    document.getElementById('form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // Read file
+      const file = this.file.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const data = e.target.result;
+        const cleanData = data.split('\n').map(x => x.trim()).filter(x => !x.startsWith("#")) // Remove any whitespace, remove all lines that start with #
+        const fileType = cleanData[0];
+        try {
+          if (fileType === 'P1') {
+            renderP1Image(cleanData);
+          } else if (fileType === 'P2') {
+            renderP2Image(cleanData);
+          } else if (fileType === 'P3') {
+            renderP3Image(cleanData);
+          } else if (fileType === 'P4') {
+            renderP4Image(cleanData);
+          } else if (fileType === 'P5') {
+            renderP5Image(cleanData);
+          } else if (fileType === 'P6') {
+            renderP6Image(cleanData);
+          }
+          document.getElementById('error-message').textContent = '';
+        } catch (error) {
+          document.getElementById('error-message').textContent = error.message;
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    /**
+     * P1 is black&white ASCII format
+     * 
+     * @param {Array<string>} dataAsRows
+     */
+    function renderP1Image(dataAsRows) {
+      const size = dataAsRows[1].split(" ").map(x => x.trim()).filter(x => x); // e.g. "20 20" for 20x20 image (split by space, remove any whitespace and empty values)
+      const zoom = document.querySelector('input[name="zoom"]').value;
+      const realSize = size.map(x => x * zoom); // Multiply size by zoom to get real pixel size of the image
+
+      // Report image size
+      document.getElementById('canvas-size').textContent = `${realSize[0]}px by ${realSize[1]}px`;
+
+      // Set our canvas
+      /** @type {HTMLCanvasElement} */
+      const canvas = document.getElementById('canvas');
+      canvas.setAttribute('width', realSize[0]);
+      canvas.setAttribute('height', realSize[1]);
+
+      // Begin drawing: 1. reset canvas, 2. draw
+      /** @type {CanvasRenderingContext2D} */
+      const context = canvas.getContext('2d');
+      context.reset();
+
+      // image data only, without header, as a matrix
+      // For each row: split by space, remove any whitespace and empty values, convert to number
+      const bitmap = dataAsRows.slice(2).map(row => row.split(" ").map(x => x.trim()).filter(x => x).map(x => parseInt(x)));
+
+      // For each row and column
+      for (let row = 0; row < size[1]; row++) {
+        for (let column = 0; column < size[0]; column++) {
+          const pixel = bitmap[row][column];
+
+          if (isNaN(pixel)) {
+            throw new Error(`Could not draw the image: pixel at row: ${row}, column: ${column} is not a valid number!`);
+          } else if (pixel > 1) {
+            throw new Error(`Could not draw the image: pixel at row: ${row}, column: ${column} must be a value between 0 and 1!`);
+          }
+          
+          // determine colour (for P1 it's black [1] or white [0])
+          const colour = pixel === 1 ? "rgb(0,0,0)" : "rgb(255,255,255)"
+
+          // Find the square position, keep in mind specified zoom
+          const canvasX = column * zoom;
+          const canvasY = row * zoom;
+
+          // How big should be the pixel?
+          const sizeX = zoom;
+          const sizeY = zoom;
+
+          // Draw the square, how big it should be depends on the zoom value
+          context.fillStyle = colour;
+          context.fillRect(canvasX, canvasY, sizeX, sizeY);
+        }
+      }
+    }
+
+    /**
+     * P2 is grayscale ASCII format
+     * 
+     * @param {Array<string>} dataAsRows
+     */
+    function renderP2Image(dataAsRows) {
+      const size = dataAsRows[1].split(" ").map(x => x.trim()).filter(x => x); // e.g. "20 20" for 20x20 image (split by space, remove any whitespace and empty values)
+      const grayscaleRange = dataAsRows[2]; // How many colours are allowed
+      const grayscaleStep = 255 / grayscaleRange; // Defines how many numbers are there between each change of the colour
+      const zoom = document.querySelector('input[name="zoom"]').value;
+      const realSize = size.map(x => x * zoom); // Multiply size by zoom to get real pixel size of the image
+
+      // Report image size
+      document.getElementById('canvas-size').textContent = `${realSize[0]}px by ${realSize[1]}px`;
+
+      // Set our canvas
+      /** @type {HTMLCanvasElement} */
+      const canvas = document.getElementById('canvas');
+      canvas.setAttribute('width', realSize[0]);
+      canvas.setAttribute('height', realSize[1]);
+
+      // Begin drawing: 1. reset canvas, 2. draw
+      /** @type {CanvasRenderingContext2D} */
+      const context = canvas.getContext('2d');
+      context.reset();
+
+      // image data only, without header, as a matrix
+      // For each row: split by space, remove any whitespace and empty values, convert to number
+      const bitmap = dataAsRows.slice(3).map(row => row.split(" ").map(x => x.trim()).filter(x => x).map(x => parseInt(x)));
+
+      // For each row and column
+      for (let row = 0; row < size[1]; row++) {
+        for (let column = 0; column < size[0]; column++) {
+          const pixel = bitmap[row][column];
+          
+          if (isNaN(pixel)) {
+            throw new Error(`Could not draw the image: pixel at row: ${row}, column: ${column} is not a valid number!`);
+          } else if (pixel > grayscaleRange) {
+            throw new Error(`Could not draw the image: pixel at row: ${row}, column: ${column} must be a value between 0 and ${grayscaleRange}!`);
+          }
+          
+          // determine colour, (for grayscaleRange = 15, it's 0 = 0, 1 = 17, 2 = 34, etc... 15 = 255)
+          const whiteValue = pixel * grayscaleStep;
+          const colour = `rgb(${whiteValue},${whiteValue},${whiteValue})`;
+
+          // Find the square position, keep in mind specified zoom
+          const canvasX = column * zoom;
+          const canvasY = row * zoom;
+
+          // How big should be the pixel?
+          const sizeX = zoom;
+          const sizeY = zoom;
+
+          // Draw the square, how big it should be depends on the zoom value
+          context.fillStyle = colour;
+          context.fillRect(canvasX, canvasY, sizeX, sizeY);
+        }
+      }
+    }
+
+    /**
+     * P3 is an RGB ASCII format
+     * 
+     * @param {Array<string>} dataAsRows
+     */
+    function renderP3Image(dataAsRows) {
+      const size = dataAsRows[1].split(" ").map(x => x.trim()).filter(x => x); // e.g. "20 20" for 20x20 image (split by space, remove any whitespace and empty values)
+      const rgbRange = dataAsRows[2]; // How many colours are allowed
+      const rgbStep = 255 / rgbRange; // Defines how many numbers are there between each change of the colour
+      const zoom = document.querySelector('input[name="zoom"]').value;
+      const realSize = size.map(x => x * zoom); // Multiply size by zoom to get real pixel size of the image
+
+      // Report image size
+      document.getElementById('canvas-size').textContent = `${realSize[0]}px by ${realSize[1]}px`;
+
+      // Set our canvas
+      /** @type {HTMLCanvasElement} */
+      const canvas = document.getElementById('canvas');
+      canvas.setAttribute('width', realSize[0]);
+      canvas.setAttribute('height', realSize[1]);
+
+      // Begin drawing: 1. reset canvas, 2. draw
+      /** @type {CanvasRenderingContext2D} */
+      const context = canvas.getContext('2d');
+      context.reset();
+
+      // image data only, without header, as a matrix
+      // For each row: split by space, remove any whitespace and empty values, convert to number
+      const bitmap = dataAsRows.slice(3).map(row => row.split(" ").map(x => x.trim()).filter(x => x).map(x => parseInt(x)));
+
+      // For each row and column
+      const rows = size[1]
+      const columns = size[0] * 3
+      for (let row = 0; row < rows; row++) {
+        for (let column = 0; column < columns; column+=3) { // Skip 3 values, instead of 1
+          const pixels = [bitmap[row][column + 0], bitmap[row][column + 1], bitmap[row][column + 2]]; // RGB
+
+          for (let i = 0; i < 3; i++) {
+            if (isNaN(pixels[i])) {
+              throw new Error(`Could not draw the image: pixel channel at row: ${row}, column: ${column + i} is not a valid number!`);
+            } else if (pixels[i] > rgbRange) {
+              throw new Error(`Could not draw the image: pixel channel at row: ${row}, column: ${column + i} must be a value between 0 and ${rgbRange}!`);
+            }
+          }
+          
+          // determine colour, same as grayscale but for each channel separately
+          const colour = `rgb(${pixels[0] * rgbStep},${pixels[1] * rgbStep},${pixels[2] * rgbStep})`;
+
+          // Find the square position, keep in mind specified zoom and that columns are now storing 3 values for each pixel!
+          const canvasX = (column / 3) * zoom;
+          const canvasY = row * zoom;
+
+          // How big should be the pixel?
+          const sizeX = zoom;
+          const sizeY = zoom;
+
+          // Draw the square, how big it should be depends on the zoom value
+          context.fillStyle = colour;
+          context.fillRect(canvasX, canvasY, sizeX, sizeY);
+        }
+      }
+    }
+
+    /**
+     * P4 is black&white binary format
+     *
+     * @param {Array<string>} dataAsRows
+     */
+    function renderP4Image(dataAsRows) {
+      const size = dataAsRows[1].split(" ").map(x => x.trim()).filter(x => x); // e.g. "20 20" for 20x20 image (split by space, remove any whitespace and empty values)
+      const zoom = document.querySelector('input[name="zoom"]').value;
+      const realSize = size.map(x => x * zoom); // Multiply size by zoom to get real pixel size of the image
+
+      // Report image size
+      document.getElementById('canvas-size').textContent = `${realSize[0]}px by ${realSize[1]}px`;
+
+      // Set our canvas
+      /** @type {HTMLCanvasElement} */
+      const canvas = document.getElementById('canvas');
+      canvas.setAttribute('width', realSize[0]);
+      canvas.setAttribute('height', realSize[1]);
+
+      // Begin drawing: 1. reset canvas, 2. draw
+      /** @type {CanvasRenderingContext2D} */
+      const context = canvas.getContext('2d');
+      context.reset();
+
+      // image data only, without header, as a matrix
+      // There are no more rows/columns, just a string of values, so we need to produce matrix based on the available size information
+      // First, convert each value to a number, then split by columns
+      const data = dataAsRows[2];
+      const bitmap = [];
+      for (let row = 0; row < size[1]; row++) {
+        bitmap[row] = []; // To create matrix, 2d array, each row must be another array itself
+        for (let column = 0; column < size[0]; column++) {
+          const offset = (row * size[0]) + column; // calculate offset: (row * number of columns) + current column
+          bitmap[row][column] = data.charCodeAt(offset); // Convert binary value to integer
+        }
+      }
+
+      // For each row and column, this section is the same as P1
+      for (let row = 0; row < size[1]; row++) {
+        for (let column = 0; column < size[0]; column++) {
+          const pixel = bitmap[row][column];
+
+          if (isNaN(pixel)) {
+            throw new Error(`Could not draw the image: pixel at row: ${row}, column: ${column} is not a valid number!`);
+          } else if (pixel > 1) {
+            throw new Error(`Could not draw the image: pixel at row: ${row}, column: ${column} must be a value between 0 and 1!`);
+          }
+          
+          // determine colour (for P1 it's black [1] or white [0])
+          const colour = pixel === 1 ? "rgb(0,0,0)" : "rgb(255,255,255)"
+
+          // Find the square position, keep in mind specified zoom
+          const canvasX = column * zoom;
+          const canvasY = row * zoom;
+
+          // How big should be the pixel?
+          const sizeX = zoom;
+          const sizeY = zoom;
+
+          // Draw the square, how big it should be depends on the zoom value
+          context.fillStyle = colour;
+          context.fillRect(canvasX, canvasY, sizeX, sizeY);
+        }
+      }
+    }
+
+    /**
+     * P5 is grayscale binary format
+     * 
+     * @param {Array<string>} dataAsRows
+     */
+    function renderP5Image(dataAsRows) {
+      const size = dataAsRows[1].split(" ").map(x => x.trim()).filter(x => x); // e.g. "20 20" for 20x20 image (split by space, remove any whitespace and empty values)
+      const grayscaleRange = dataAsRows[2]; // How many colours are allowed
+      const grayscaleStep = 255 / grayscaleRange; // Defines how many numbers are there between each change of the colour
+      const zoom = document.querySelector('input[name="zoom"]').value;
+      const realSize = size.map(x => x * zoom); // Multiply size by zoom to get real pixel size of the image
+
+      // Report image size
+      document.getElementById('canvas-size').textContent = `${realSize[0]}px by ${realSize[1]}px`;
+
+      // Set our canvas
+      /** @type {HTMLCanvasElement} */
+      const canvas = document.getElementById('canvas');
+      canvas.setAttribute('width', realSize[0]);
+      canvas.setAttribute('height', realSize[1]);
+
+      // Begin drawing: 1. reset canvas, 2. draw
+      /** @type {CanvasRenderingContext2D} */
+      const context = canvas.getContext('2d');
+      context.reset();
+
+      // image data only, without header, as a matrix
+      // There are no more rows/columns, just a string of values, so we need to produce matrix based on the available size information
+      // First, convert each value to a number, then split by columns
+      const data = dataAsRows[3];
+      const bitmap = [];
+      for (let row = 0; row < size[1]; row++) {
+        bitmap[row] = []; // To create matrix, 2d array, each row must be another array itself
+        for (let column = 0; column < size[0]; column++) {
+          const offset = (row * size[0]) + column; // calculate offset: (row * number of columns) + current column
+          bitmap[row][column] = data.charCodeAt(offset); // Convert binary value to integer
+        }
+      }
+
+      // For each row and column
+      for (let row = 0; row < size[1]; row++) {
+        for (let column = 0; column < size[0]; column++) {
+          const pixel = bitmap[row][column];
+          
+          if (isNaN(pixel)) {
+            throw new Error(`Could not draw the image: pixel at row: ${row}, column: ${column} is not a valid number!`);
+          } else if (pixel > grayscaleRange) {
+            throw new Error(`Could not draw the image: pixel at row: ${row}, column: ${column} must be a value between 0 and ${grayscaleRange}!`);
+          }
+          
+          // determine colour, (for grayscaleRange = 15, it's 0 = 0, 1 = 17, 2 = 34, etc... 15 = 255)
+          const whiteValue = pixel * grayscaleStep;
+          const colour = `rgb(${whiteValue},${whiteValue},${whiteValue})`;
+
+          // Find the square position, keep in mind specified zoom
+          const canvasX = column * zoom;
+          const canvasY = row * zoom;
+
+          // How big should be the pixel?
+          const sizeX = zoom;
+          const sizeY = zoom;
+
+          // Draw the square, how big it should be depends on the zoom value
+          context.fillStyle = colour;
+          context.fillRect(canvasX, canvasY, sizeX, sizeY);
+        }
+      }
+    }
+
+    /**
+     * P6 is an RGB binary format
+     * 
+     * @param {Array<string>} dataAsRows
+     */
+    function renderP6Image(dataAsRows) {
+      const size = dataAsRows[1].split(" ").map(x => x.trim()).filter(x => x); // e.g. "20 20" for 20x20 image (split by space, remove any whitespace and empty values)
+      const rgbRange = dataAsRows[2]; // How many colours are allowed
+      const rgbStep = 255 / rgbRange; // Defines how many numbers are there between each change of the colour
+      const zoom = document.querySelector('input[name="zoom"]').value;
+      const realSize = size.map(x => x * zoom); // Multiply size by zoom to get real pixel size of the image
+
+      // Report image size
+      document.getElementById('canvas-size').textContent = `${realSize[0]}px by ${realSize[1]}px`;
+
+      // Set our canvas
+      /** @type {HTMLCanvasElement} */
+      const canvas = document.getElementById('canvas');
+      canvas.setAttribute('width', realSize[0]);
+      canvas.setAttribute('height', realSize[1]);
+
+      // Begin drawing: 1. reset canvas, 2. draw
+      /** @type {CanvasRenderingContext2D} */
+      const context = canvas.getContext('2d');
+      context.reset();
+
+      // image data only, without header, as a matrix
+      // There are no more rows/columns, just a string of values, so we need to produce matrix based on the available size information
+      // First, convert each value to a number, then split by columns
+      const data = dataAsRows[3];
+      const bitmap = [];
+      const rows = size[1]
+      const columns = size[0] * 3
+      for (let row = 0; row < rows; row++) {
+        bitmap[row] = []; // To create matrix, 2d array, each row must be another array itself
+        for (let column = 0; column < columns; column++) {
+          const offset = (row * columns) + column; // calculate offset: (row * number of columns) + current column
+          bitmap[row][column] = data.charCodeAt(offset); // Convert binary value to integer
+        }
+      }
+
+      // For each row and column
+      for (let row = 0; row < rows; row++) {
+        for (let column = 0; column < columns; column+=3) { // Skip 3 values, instead of 1
+          const pixels = [bitmap[row][column + 0], bitmap[row][column + 1], bitmap[row][column + 2]]; // RGB
+
+          for (let i = 0; i < 3; i++) {
+            if (isNaN(pixels[i])) {
+              throw new Error(`Could not draw the image: pixel channel at row: ${row}, column: ${column + i} is not a valid number!`);
+            } else if (pixels[i] > rgbRange) {
+              throw new Error(`Could not draw the image: pixel channel at row: ${row}, column: ${column + i} must be a value between 0 and ${rgbRange}!`);
+            }
+          }
+          
+          // determine colour, same as grayscale but for each channel separately
+          const colour = `rgb(${pixels[0] * rgbStep},${pixels[1] * rgbStep},${pixels[2] * rgbStep})`;
+
+          // Find the square position, keep in mind specified zoom and that columns are now storing 3 values for each pixel!
+          const canvasX = (column / 3) * zoom;
+          const canvasY = row * zoom;
+
+          // How big should be the pixel?
+          const sizeX = zoom;
+          const sizeY = zoom;
+
+          // Draw the square, how big it should be depends on the zoom value
+          context.fillStyle = colour;
+          context.fillRect(canvasX, canvasY, sizeX, sizeY);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
