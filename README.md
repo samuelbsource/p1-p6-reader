@@ -1,7 +1,7 @@
 # PPM File reader
 
 A simple PPM file reader, created from scratch using mainly examples of such files.
-I am not sure why I've created this, we've had to memorise this image format for our university course, so I've craated a program and decode and render them.
+I am not sure why I've created this, we've had to memorise this image format for our university course, so I've craated a program to decode and render them.
 
 ## Features
 
